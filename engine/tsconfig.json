@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": false,
+    "baseUrl": ".",
+    "paths": {
+      "@crdt-demo/shared": [
+        "../shared/dist/index.d.ts"
+      ],
+      "@crdt-demo/shared/*": [
+        "../shared/dist/*"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

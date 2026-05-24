@@ -1,0 +1,24 @@
+{
+  "name": "crdt-demo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "engine",
+    "shared"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev:client": "npm --workspace client run dev",
+    "dev:server": "npm --workspace server run dev",
+    "build:client": "npm --workspace client run build",
+    "build:server": "npm --workspace server run build",
+    "build:engine": "npm --workspace @crdt-demo/engine run build",
+    "build:shared": "npm --workspace @crdt-demo/shared run build",
+    "typecheck:client": "npm --workspace client run typecheck",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  }
+}
