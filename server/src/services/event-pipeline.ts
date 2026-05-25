@@ -22,10 +22,12 @@ export class EventPipeline {
       receivedAt: new Date().toISOString()
     };
 
+    // Keep the in-memory room document hot so snapshots can be produced from current state.
     this.roomStateStore.applyUpdate(roomId, payloadBase64);
     const length = await this.redisQueue.enqueue(roomId, event);
     this.ensureFlushTimer(roomId);
 
+    // Flush immediately when the buffered room queue reaches the configured chunk size.
     if (length >= this.config.chunkSize) {
       await this.flushRoom(roomId);
     }
@@ -53,6 +55,7 @@ export class EventPipeline {
       return;
     }
 
+    // Each room gets its own periodic flush so low-traffic rooms are eventually persisted too.
     const timer = setInterval(() => {
       void this.flushRoom(roomId);
     }, this.config.flushIntervalMs);
@@ -74,12 +77,14 @@ export class EventPipeline {
     this.roomFlushLocks.add(roomId);
 
     try {
+      // Drain only one chunk at a time so Redis buffering and Postgres sequence ranges stay aligned.
       const events = await this.redisQueue.drain(roomId, this.config.chunkSize);
 
       if (events.length === 0) {
         return;
       }
 
+      // Postgres stores the binary event chunk and, when needed, a JSON snapshot of the current room.
       const result = await this.postgresStorage.persistChunk(
         roomId,
         events,

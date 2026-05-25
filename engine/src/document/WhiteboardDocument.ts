@@ -48,6 +48,8 @@ export class WhiteboardDocument {
 
   createItem(input: CreateItemInput): DemoItemRecord {
     let createdItem: DemoItemRecord | null = null;
+
+    // Group all Yjs mutations produced by item creation into one CRDT update.
     this.document.transact(() => {
       createdItem = this.mutations.createItem(input);
     }, LOCAL_ORIGIN);
@@ -61,6 +63,8 @@ export class WhiteboardDocument {
 
   moveItem(id: string, nextX: number, nextY: number): boolean {
     let didMove = false;
+
+    // The mutation may touch the item and its parent relationships, so keep it atomic.
     this.document.transact(() => {
       didMove = this.mutations.moveItem(id, nextX, nextY);
     }, LOCAL_ORIGIN);
@@ -69,6 +73,8 @@ export class WhiteboardDocument {
 
   deleteItem(id: string): string[] {
     let deletedIds: string[] = [];
+
+    // Deletion can rewrite z-order and remove a whole subtree, so emit one Yjs transaction.
     this.document.transact(() => {
       deletedIds = this.mutations.deleteItem(id);
     }, LOCAL_ORIGIN);
@@ -77,6 +83,8 @@ export class WhiteboardDocument {
 
   updateItemFill(id: string, fill: string): boolean {
     let didUpdate = false;
+
+    // Keep field edits as a single local document change for observers and sync.
     this.document.transact(() => {
       didUpdate = this.mutations.updateItemFill(id, fill);
     }, LOCAL_ORIGIN);
@@ -85,6 +93,8 @@ export class WhiteboardDocument {
 
   updateItemBackgroundImage(id: string, backgroundImage: string | null): boolean {
     let didUpdate = false;
+
+    // Keep field edits as a single local document change for observers and sync.
     this.document.transact(() => {
       didUpdate = this.mutations.updateItemBackgroundImage(id, backgroundImage);
     }, LOCAL_ORIGIN);
@@ -93,6 +103,8 @@ export class WhiteboardDocument {
 
   updateItemText(id: string, text: string): boolean {
     let didUpdate = false;
+
+    // Keep field edits as a single local document change for observers and sync.
     this.document.transact(() => {
       didUpdate = this.mutations.updateItemText(id, text);
     }, LOCAL_ORIGIN);
@@ -100,6 +112,7 @@ export class WhiteboardDocument {
   }
 
   loadSnapshot(snapshot: RoomSnapshotData) {
+    // Snapshot restore rewrites the whole document, so it should be applied atomically.
     this.document.transact(() => {
       this.zOrder.delete(0, this.zOrder.length);
       this.zOrder.push(snapshot.zOrder);

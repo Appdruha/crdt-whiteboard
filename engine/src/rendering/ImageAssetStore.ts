@@ -13,6 +13,7 @@ export class ImageAssetStore {
       return false;
     }
 
+    // Track in-flight loads so repeated renders do not start duplicate Pixi asset requests.
     this.pendingImageUrls.add(url);
 
     try {

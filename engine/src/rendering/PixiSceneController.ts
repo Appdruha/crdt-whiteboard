@@ -39,6 +39,7 @@ export class PixiSceneController {
       antialias: true
     });
 
+    // `stageRoot` is the movable scene container: camera pan shifts this node, not each item.
     this.application.stage.addChild(this.stageRoot);
     this.stageRoot.sortableChildren = true;
     this.container.appendChild(this.application.canvas);
@@ -96,6 +97,7 @@ export class PixiSceneController {
     const visibleIds = this.getVisibleItemIds(orderedItems, itemsById);
     const presentIds = new Set(orderedItems.map((item) => item.id));
 
+    // Camera movement is applied as one transform on the scene root.
     this.stageRoot.position.set(this.camera.x, this.camera.y);
 
     for (const [id, view] of this.viewById.entries()) {
@@ -110,6 +112,7 @@ export class PixiSceneController {
     }
 
     for (const [index, item] of orderedItems.entries()) {
+      // Keep one stable Pixi container per item id to avoid recreating interaction state on every render.
       const view = getOrCreateView(this.viewById, item.id, onItemPointerDown);
       updateView(view, item, {
         renderToken,
@@ -129,6 +132,7 @@ export class PixiSceneController {
       view.position.set(worldPosition.x, worldPosition.y);
       view.zIndex = index;
 
+      // Off-screen items are detached from the stage instead of being fully destroyed.
       if (visibleIds.has(item.id)) {
         if (view.parent !== this.stageRoot) {
           this.stageRoot.addChild(view);
@@ -144,6 +148,7 @@ export class PixiSceneController {
     const visibleContainers = new Set<string>();
     const visibleItems = new Set<string>();
 
+    // Containers are evaluated first so children can inherit parent visibility rules.
     for (const item of items) {
       if (!canAcceptChildren(item)) {
         continue;
@@ -187,6 +192,7 @@ export class PixiSceneController {
   }
 
   private syncViewportBounds() {
+    // Pixi needs an explicit hit area so empty canvas space still receives pointer events for panning.
     this.application.stage.hitArea = new Rectangle(
       0,
       0,

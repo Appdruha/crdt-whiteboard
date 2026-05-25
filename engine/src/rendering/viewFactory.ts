@@ -26,6 +26,7 @@ export function getOrCreateView(
 export function updateView(container: Container, item: DemoItemRecord, options: UpdateViewOptions) {
   container.label = item.id;
   container.cursor = canAcceptChildren(item) ? "move" : "grab";
+  // Rebuild the visual subtree, but keep the outer container stable for pointer handling and identity.
   container.removeChildren().forEach((child) => child.destroy({ children: true }));
   renderItemContent(container, item, options);
   appendSelectionOutline(container, item, options.selectedItemId);
@@ -36,6 +37,7 @@ function appendSelectionOutline(container: Container, item: DemoItemRecord, sele
     return;
   }
 
+  // Selection is rendered as an overlay inside the item's own container so it follows the same transform.
   const outline = new Graphics();
   outline
     .rect(-4, -4, item.width + 8, item.height + 8)

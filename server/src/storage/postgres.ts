@@ -23,6 +23,7 @@ export class PostgresStorage {
   }
 
   async init() {
+    // `rooms` stores sequence bookkeeping so event chunks can be written in a stable order per room.
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS rooms (
         id TEXT PRIMARY KEY,
@@ -32,6 +33,7 @@ export class PostgresStorage {
       )
     `);
 
+    // `event_chunks` stores raw binary Yjs updates grouped into append-only persisted chunks.
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS event_chunks (
         id BIGSERIAL PRIMARY KEY,
@@ -44,6 +46,7 @@ export class PostgresStorage {
       )
     `);
 
+    // `snapshots` stores debug/recovery snapshots of the room state at specific sequence numbers.
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS snapshots (
         id BIGSERIAL PRIMARY KEY,
@@ -74,6 +77,7 @@ export class PostgresStorage {
         [roomId]
       );
 
+      // Lock the room row so concurrent flushes cannot assign overlapping sequence ranges.
       const roomResult = await client.query<{
         last_seq: number;
         last_snapshot_seq: number;
@@ -90,6 +94,7 @@ export class PostgresStorage {
       const room = roomResult.rows[0];
       const seqFrom = room.last_seq + 1;
       const seqTo = room.last_seq + events.length;
+      // Pack a whole chunk into one BYTEA blob to keep Yjs updates opaque and replayable.
       const payloadBinary = encodeChunk(events);
 
       await client.query(
@@ -103,6 +108,7 @@ export class PostgresStorage {
       let snapshotSaved = false;
       let lastSnapshotSeq = room.last_snapshot_seq;
 
+      // Snapshot cadence is based on persisted event sequence distance, not wall-clock time.
       if (seqTo - room.last_snapshot_seq >= snapshotEvery) {
         await client.query(
           `
@@ -147,6 +153,7 @@ export class PostgresStorage {
   }
 
   async loadRoomState(roomId: string) {
+    // Recovery starts from the latest snapshot, then replays all persisted binary chunks.
     const snapshotResult = await this.pool.query<{
       seq: number;
       snapshot_json: SnapshotPayload;
@@ -184,6 +191,7 @@ export class PostgresStorage {
 }
 
 function encodeChunk(events: StoredEvent[]) {
+  // Binary format: [count][metadata length][payload length][metadata][payload]...
   const parts: Buffer[] = [];
   const countBuffer = Buffer.allocUnsafe(4);
   countBuffer.writeUInt32BE(events.length, 0);
@@ -202,6 +210,7 @@ function encodeChunk(events: StoredEvent[]) {
 }
 
 function decodeChunk(payloadBinary: Buffer) {
+  // Reverse of `encodeChunk`, used for room recovery and replay.
   const events: StoredEvent[] = [];
   let offset = 0;
   const count = payloadBinary.readUInt32BE(offset);

@@ -36,6 +36,7 @@ export function renderItemContent<TType extends DemoItemRecord["type"]>(
   item: Extract<DemoItemRecord, { type: TType }>,
   options: UpdateViewOptions
 ) {
+  // Type-specific drawing is dispatched through a registry instead of branching in the scene controller.
   ITEM_RENDERERS[item.type](container, item, options);
 }
 
@@ -54,6 +55,7 @@ function appendBackgroundImage(
     return;
   }
 
+  // Image loading is async, so the fill stays visible until the texture is available.
   void options.ensureImageLoaded(item.backgroundImage).then((loadedNow) => {
     if (loadedNow) {
       options.onImageLoaded(options.renderToken, item.backgroundImage!);
@@ -70,6 +72,7 @@ function appendBackgroundImage(
     return;
   }
 
+  // The loaded texture is projected to the item's bounds as a plain Pixi sprite.
   const sprite = new Sprite(texture);
   sprite.width = item.width;
   sprite.height = item.height;
